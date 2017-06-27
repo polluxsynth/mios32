@@ -1,0 +1,4 @@
+# $Id: STM32F10x_reset.script 1063 2010-09-20 19:41:04Z tk $
+
+reset_config srst_only
+reset run 

@@ -1,0 +1,6 @@
+$Id: CHANGELOG.txt 1394 2012-01-04 22:00:58Z tk $
+
+MIDIbox CV V2.000
+~~~~~~~~~~~~~~~~~
+
+   o initial version

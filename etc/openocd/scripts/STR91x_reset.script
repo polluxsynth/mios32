@@ -1,0 +1,6 @@
+# $Id: STR91x_reset.script 50 2008-10-03 21:51:17Z tk $
+
+wait_halt
+reset run
+sleep 10
+shutdown
