@@ -45,8 +45,13 @@ extern USB_OTG_CORE_HANDLE  USB_OTG_dev;
 # define BSL_HOLD_PIN         GPIO_Pin_2
 # define BSL_HOLD_STATE       ((BSL_HOLD_PORT->IDR & BSL_HOLD_PIN) ? 0 : 1)
 #elif defined(MIOS32_FAMILY_STM32F4xx)
+#ifdef MIOS32_BOARD_AUDIOTHINGIES_P6
+# define BSL_HOLD_PORT        GPIOC
+# define BSL_HOLD_PIN         GPIO_Pin_6
+#else // Standard Midibox port assigment
 # define BSL_HOLD_PORT        GPIOA
 # define BSL_HOLD_PIN         GPIO_Pin_0
+#endif
 # define BSL_HOLD_STATE       ((BSL_HOLD_PORT->IDR & BSL_HOLD_PIN) ? 1 : 0) // the "User Button" has a pull-down device
 #else
 # define BSL_HOLD_INIT        { MIOS32_SYS_LPC_PINSEL(1, 27, 0); MIOS32_SYS_LPC_PINDIR(1, 27, 0); MIOS32_SYS_LPC_PINMODE(1, 27, 0); }
