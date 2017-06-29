@@ -26,7 +26,11 @@
 #if defined  (HSE_VALUE)
 /* Redefine the HSE value; it's equal to 8 MHz on the STM32F4-DISCOVERY Kit */
  #undef HSE_VALUE
+ #ifdef MIOS32_BOARD_AUDIOTHINGIES_P6
+ #define HSE_VALUE    ((uint32_t)12000000) /* And 12 MHz for the P6 */
+ #else
  #define HSE_VALUE    ((uint32_t)8000000) 
+ #endif
 #endif /* HSE_VALUE */
 
 /* Includes ------------------------------------------------------------------*/

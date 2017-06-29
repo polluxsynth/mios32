@@ -40,14 +40,20 @@ extern u32 mios32_sys_isr_vector;
 #define MEM8(addr)  (*((volatile u8  *)(addr)))
 
 
+#ifdef MIOS32_BOARD_AUDIOTHINGIES_P6
+#define EXT_CRYSTAL_FRQ 12000000  // P6 uses (non default) 12 MHz xtal
+#define PLL_M      12
+#define PLL_N      336
+#else
 #define EXT_CRYSTAL_FRQ 8000000  // used for MBHP_CORE_STM32, should we define this somewhere else or select via MIOS32_BOARD?
+#define PLL_M      8
+#define PLL_N      336
+#endif
 
-#if EXT_CRYSTAL_FRQ != 8000000
+#if !defined(PLL_M) || !defined(PLL_N)
 # error "Please provide alternative PLL config"
 #endif
 /* PLL_VCO = (HSE_VALUE or HSI_VALUE / PLL_M) * PLL_N */
-#define PLL_M      8
-#define PLL_N      336
 
 /* SYSCLK = PLL_VCO / PLL_P */
 #define PLL_P      2
@@ -377,7 +383,7 @@ s32 MIOS32_SYS_TimeSet(mios32_sys_time_t t)
   PWR_BackupAccessCmd(ENABLE);
 
   // Select HSE (divided by 16) as RTC Clock Source
-#if EXT_CRYSTAL_FRQ != 8000000
+#if EXT_CRYSTAL_FRQ != 8000000 && EXT_CRYSTAL_FRQ != 12000000
 # error "Please configure alternative clock divider here"
 #endif
   RCC_RTCCLKConfig(RCC_RTCCLKSource_HSE_Div16); // -> each 1/(8 MHz / 16) = 2 uS
@@ -390,7 +396,13 @@ s32 MIOS32_SYS_TimeSet(mios32_sys_time_t t)
   RTC_StructInit(&RTC_InitStruct);
 
   // Set RTC prescaler: set RTC period from 2 uS to 1 S
+#if EXT_CRYSTAL_FRQ == 8000000
   RTC_InitStruct.RTC_AsynchPrediv = 100 - 1; // 7bit maximum
+#elif EXT_CRYSTAL_FRQ == 12000000
+  RTC_InitStruct.RTC_AsynchPrediv = 150 - 1; // 7bit maximum
+#else
+# error "Please provide appropriate prescaler divider here"
+#endif
   RTC_InitStruct.RTC_SynchPrediv = 5000 - 1; // 13 bit maximum
   RTC_Init(&RTC_InitStruct);
 
