@@ -1,20 +1,23 @@
-# $Id: Makefile 558 2009-05-22 11:54:38Z tk $
+# $Id: Makefile.bsl_MBHP_CORE_STM32 562 2009-05-22 22:35:29Z tk $
 
 ################################################################################
-# following setup taken from environment variables
+# following setup is static for STM32F4 and STM32F4DISCOVERY module
 ################################################################################
 
-PROCESSOR =	$(MIOS32_PROCESSOR)
-FAMILY    = 	$(MIOS32_FAMILY)
-BOARD	  = 	$(MIOS32_BOARD)
-LCD       =     $(MIOS32_LCD)
+PROCESSOR =	STM32F407VG
+FAMILY    = 	STM32F4xx
+BOARD	  = 	AUDIOTHINGIES_P6
+LCD       =     dummy
 
 
 ################################################################################
 # Source Files, include paths and libraries
 ################################################################################
 
-THUMB_SOURCE    = app.c ../src/p6_board.c
+THUMB_SOURCE    = startup_stm32f4xx.c \
+		  main.c \
+		  p6_board.c \
+		  bsl_sysex.c
 
 # (following source stubs not relevant for Cortex M3 derivatives)
 THUMB_AS_SOURCE =
@@ -31,7 +34,9 @@ LIBS =
 # Remaining variables
 ################################################################################
 
-LD_FILE   = 	$(MIOS32_PATH)/etc/ld/$(FAMILY)/$(PROCESSOR).ld
+#LD_FILE   = 	$(MIOS32_PATH)/etc/ld/$(FAMILY)/$(PROCESSOR).ld
+# specified when this makefile is executed from Makefile
+LD_FILE   = 	STM32F407_bsl.ld
 PROJECT   = 	project
 
 DEBUG     =	-g
@@ -44,11 +49,8 @@ CFLAGS =	$(DEBUG) $(OPTIMIZE)
 # Include source modules via additional makefiles
 ################################################################################
 
-# sources of programming model
-include $(MIOS32_PATH)/programming_models/traditional/programming_model.mk
-
-# application specific LCD driver (selected via makefile variable)
-include $(MIOS32_PATH)/modules/app_lcd/$(LCD)/app_lcd.mk
+# add MIOS32 sources
+include $(MIOS32_PATH)/mios32/mios32.mk
 
 # common make rules
 include $(MIOS32_PATH)/include/makefile/common.mk

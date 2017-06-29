@@ -32,6 +32,13 @@ STM32F4DISCOVERY:
 	perl gen_inc_file.pl project_STM32F4DISCOVERY.bin ../../mios32/STM32F4xx/mios32_bsl_STM32F4DISCOVERY.inc mios32_bsl_image mios32_bsl
 	perl gen_inc_file.pl project_STM32F4DISCOVERY.bin ../updater/bsl_image_STM32F4DISCOVERY.inc bsl_image 0
 
+AUDIOTHINGIES_P6:
+	make -f Makefile.bsl_AUDIOTHINGIES_P6 cleanall
+	make -f Makefile.bsl_AUDIOTHINGIES_P6
+	mv project_build/project.bin project_AUDIOTHINGIES_P6.bin
+	perl gen_inc_file.pl project_AUDIOTHINGIES_P6.bin ../../mios32/STM32F4xx/mios32_bsl_AUDIOTHINGIES_P6.inc mios32_bsl_image mios32_bsl
+	perl gen_inc_file.pl project_AUDIOTHINGIES_P6.bin ../updater/bsl_image_AUDIOTHINGIES_P6.inc bsl_image 0
+
 LPCXPRESSO_1768:
 	make -f Makefile.bsl_LPCXPRESSO_1768 cleanall
 	make -f Makefile.bsl_LPCXPRESSO_1768
