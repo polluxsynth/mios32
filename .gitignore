@@ -1,0 +1,3 @@
+*.swp
+project_build/
+bootloader/src/*.bin
