@@ -221,7 +221,20 @@ s32 MIOS32_I2S_Init(u32 mode)
 
   // I2S initialisation
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI3, ENABLE);
+  RCC_PLLI2SCmd(DISABLE); // Needed to change PLLI2SN
+  // This should really be calculated in a better way to match the
+  // actual audio sample rate selected, but 258 and 3 are recommended
+  // in the STM32Fxx Reference Manual (RM0090) page 902 for a 48 kHz
+  // sample rate, when MCLK out is enabled. By default, the values are
+  // 192 and 2, which give a large frequency error when 48 kHz selected
+  // and MCLK enabled.
+#if MIOS32_I2S_MCLK_ENABLE
+  RCC_PLLI2SConfig(258, 3); // PLLI2SN, PLLI2SR
+#else
+  RCC_PLLI2SConfig(192, 5); // PLLI2SN, PLLI2SR
+#endif
   RCC_PLLI2SCmd(ENABLE); // new for STM32F4: enable I2S PLL
+
   I2S_InitTypeDef I2S_InitStructure;
   I2S_StructInit(&I2S_InitStructure);
   I2S_InitStructure.I2S_Standard = MIOS32_I2S_STANDARD;
