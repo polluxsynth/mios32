@@ -62,13 +62,21 @@
 // Pin definitions
 /////////////////////////////////////////////////////////////////////////////
 
+// (Most pin allocations are the same between the STM32F4DISCOVERY and P6)
+
 #define MIOS32_I2S_WS_PORT   GPIOA
 #define MIOS32_I2S_WS_PIN    GPIO_Pin_4
 #define MIOS32_I2S_WS_PINSRC GPIO_PinSource4
 
+#if defined(MIOS32_BOARD_AUDIOTHINGIES_P6)
+#define MIOS32_I2S_CK_PORT   GPIOB
+#define MIOS32_I2S_CK_PIN    GPIO_Pin_3
+#define MIOS32_I2S_CK_PINSRC GPIO_PinSource3
+#else
 #define MIOS32_I2S_CK_PORT   GPIOC
 #define MIOS32_I2S_CK_PIN    GPIO_Pin_10
 #define MIOS32_I2S_CK_PINSRC GPIO_PinSource10
+#endif
 
 #define MIOS32_I2S_SD_PORT   GPIOC
 #define MIOS32_I2S_SD_PIN    GPIO_Pin_12
