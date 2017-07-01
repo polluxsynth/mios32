@@ -12,12 +12,13 @@
 
 // The boot message which is print during startup and returned on a SysEx query
 #define MIOS32_LCD_BOOT_MSG_LINE1 "Goom synth"
-#define MIOS32_LCD_BOOT_MSG_LINE2 "Startup"
+#define MIOS32_LCD_BOOT_MSG_LINE2 "Start"
 
 #define MIOS32_DONT_USE_BOARD // Use p6_board.c instead
 
 #define MIOS32_DONT_USE_SRIO
-#define MIOS32_NUM_SR 3 // 3x HC165's
+#define MIOS32_DONT_USE_DIN
+#define MIOS32_DONT_USE_DOUT
 
 #define MIOS32_DONT_USE_AIN
 

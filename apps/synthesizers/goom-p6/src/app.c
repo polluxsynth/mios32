@@ -16,6 +16,7 @@
 #include <FreeRTOS.h>
 #include <portmacro.h>
 
+#include <p6_board.h>
 
 /////////////////////////////////////////////////////////////////////////////
 // Local definitions
@@ -40,6 +41,9 @@ void APP_Init(void)
   // initialize all LEDs
   MIOS32_BOARD_LED_Init(0xffffffff);
 
+  // init P6 I/O scan
+  MIOS32_BOARD_P6_ScanInit();
+
   // init Synth
   SYNTH_Init(0);
 }
@@ -63,8 +67,14 @@ void APP_Background(void)
 void APP_Tick(void)
 {
   // PWM modulate the status LED (this is a sign of life)
-  u32 timestamp = MIOS32_TIMESTAMP_Get();
-  MIOS32_BOARD_LED_Set(1, (timestamp % 20) <= ((timestamp / 100) % 10));
+  //u32 timestamp = MIOS32_TIMESTAMP_Get();
+  //MIOS32_BOARD_LED_Set(1, (timestamp % 20) <= ((timestamp / 100) % 10));
+
+  // run P6 I/O scan
+  MIOS32_BOARD_P6_ScanStart();
+
+  // Process I/O changes
+  MIOS32_BOARD_P6_DIN_Handler(APP_DIN_NotifyToggle);
 
   // update synth
   SYNTH_Update_1mS();
@@ -109,10 +119,17 @@ void APP_SRIO_ServiceFinish(void)
 
 /////////////////////////////////////////////////////////////////////////////
 // This hook is called when a button has been toggled
-// pin_value is 1 when button released, and 0 when button pressed
+// On P6, pin_value is 0 when button released, and 1 when button pressed
 /////////////////////////////////////////////////////////////////////////////
 void APP_DIN_NotifyToggle(u32 pin, u32 pin_value)
 {
+  MIOS32_LCD_CursorSet(6, 1);
+  MIOS32_LCD_PrintFormattedString("Bit %02d:%d", pin, pin_value);
+  if (pin <= 8 && pin_value) {
+    u32 leds = MIOS32_BOARD_LED_Get();
+    MIOS32_BOARD_LED_Set(leds, 0);
+    MIOS32_BOARD_LED_Set(1 << pin, 0xffff);
+  }
 }
 
 
