@@ -169,6 +169,12 @@ void SYNTH_ReloadSampleBuffer(u32 state);
 /////////////////////////////////////////////////////////////////////////////
 s32 SYNTH_Init(u32 mode)
 {
+  // Default settings: Sustains and fc to max, filter env and pan to mid
+  ctrl[0][10] = ctrl[0][14] = ctrl[0][20] = 127; // Fsus, Asus, fc: max
+  ctrl[0][19] = ctrl[0][23] = 64; // fenv, pan: mid
+  ctrl[0][22] = 80; // vol: reasonably high
+  chup[0] = 1; // Force synth parameter update
+
   // use J10A.D0 for performance measurements
   //MIOS32_BOARD_J10_PinInit(0, MIOS32_BOARD_PIN_MODE_OUTPUT_PP);
 
