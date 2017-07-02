@@ -209,6 +209,7 @@ s32 MIOS32_ENC_UpdateStates(void)
       --enc_state_ptr->accelerator;
 
     // take over encoder state from SRIO handler if SR != 0
+#if !defined(MIOS32_DONT_USE_SRIO) && !defined(MIOS32_DONT_USE_DIN)
     // (if SR configured with 0 we expect that the state is controlled from application, e.g. by scanning GPIOs)
     if( enc_config_ptr->cfg.sr != 0 ) {
       // check if encoder state has been changed, and clear changed flags, so that the changes won't be propagated to DIN handler
@@ -225,6 +226,7 @@ s32 MIOS32_ENC_UpdateStates(void)
 	enc_state_ptr->act12 = state;
       }
     }
+#endif
 
     // new encoder state?
     if( enc_state_ptr->last12 != enc_state_ptr->act12 ) {
