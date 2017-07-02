@@ -16,6 +16,7 @@ LCD       =     $(MIOS32_LCD)
 
 THUMB_SOURCE    = src/app.c \
 		  src/synth.c \
+		  src/param.c \
 		  src/p6_board.c
 
 # (following source stubs not relevant for Cortex M3 derivatives)

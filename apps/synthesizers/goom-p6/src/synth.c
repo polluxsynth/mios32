@@ -35,10 +35,6 @@
 #include <portmacro.h>
 
 
-#define NPOLY 16 // polyphony: must be a power of 2
-#define NCHAN 16 // number of MIDI channels/patches: must be a power of 2
-
-
 volatile int tbuf[4][2]; // L,R samples being prepared
 
 const short sintab[256]={ // sine table, linearly interpolated by oscillators:
@@ -77,7 +73,7 @@ const unsigned short exptab1[64]={ // fine tuning: round(2^15*(2.^([0:1:31]/1024
 unsigned char chup[NCHAN];     // channel controls updated?
 unsigned char sus[NCHAN];      // sustain pedal position
 unsigned short knob[24];       // raw 10-bit MSB-justified ADC results
-unsigned char ctrl[NCHAN][24]; // 7-bit control values
+unsigned char ctrl[NCHAN][NPARAM]; // 7-bit control values
 short pbend[NCHAN];            // pitch bend position
 
 struct egparams { // envelope generator parameters
@@ -183,6 +179,25 @@ s32 SYNTH_Init(u32 mode)
 }
 
 /////////////////////////////////////////////////////////////////////////////
+// Read parameter value
+/////////////////////////////////////////////////////////////////////////////
+u8 SYNTH_FetchParamValue(u8 chan, u8 param_id)
+{
+  return ctrl[chan][param_id];
+}
+
+/////////////////////////////////////////////////////////////////////////////
+// Write parameter value
+/////////////////////////////////////////////////////////////////////////////
+s32 SYNTH_StoreParamValue(u8 chan, u8 param_id, u8 value)
+{
+  ctrl[chan][param_id] = value;
+  chup[chan] = 1;
+
+  return 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////
 // derive frequency and volume settings from controller values for one voice
 /////////////////////////////////////////////////////////////////////////////
 static void setfreqvol(struct voicedata*v,unsigned char*ct) {
@@ -218,8 +233,8 @@ static void setfreqvol(struct voicedata*v,unsigned char*ct) {
   v->o0k1=0x800000/p2;
 
   // oscillator 1 frequency
-  if(ct[7]>0x60) u=-0x1000-287;     // fixed "low" frequency
-  else if(ct[7]>0x20) u=0x3000-287; // fixed "high" frequency
+  if(ct[7]==2) u=-0x1000-287;     // fixed "low" frequency
+  else if(ct[7]==1) u=0x3000-287; // fixed "high" frequency
   u+=(ct[2]<<7)+(ct[3]<<3)-0x2200;
   f=(exptab0[(u&0xfc0)>>6]*exptab1[u&0x3f])>>(10-(u>>12));
   v->o1dph=f;
@@ -278,9 +293,12 @@ static void procctrl(int chan) {
   pa->fega=(ct[19]<<1)-128;
   pa->res=0xff-(ct[21]<<1);
 
+#if 0
   if(ct[18]<0x20) pa->omode=0;  // oscillator combine mode
   else if(ct[18]>0x60) pa->omode=2;
   else pa->omode=1;
+#endif
+  pa->omode = ct[18];
 
   i=ct[22]; // volume
   if(i) i=exptab0[(i&0xf)<<2]>>(7-(i>>4)); // convert to linear

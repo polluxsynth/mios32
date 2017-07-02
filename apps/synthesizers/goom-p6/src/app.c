@@ -12,6 +12,7 @@
 #include <mios32.h>
 #include "app.h"
 #include "synth.h"
+#include "param.h"
 
 #include <FreeRTOS.h>
 #include <portmacro.h>
@@ -27,6 +28,7 @@
 // Local variables
 /////////////////////////////////////////////////////////////////////////////
 
+static u32 pin_status;
 
 /////////////////////////////////////////////////////////////////////////////
 // Global Variables
@@ -46,6 +48,9 @@ void APP_Init(void)
 
   // init Synth
   SYNTH_Init(0);
+
+  // init Param handler
+  PARAM_Init(0);
 }
 
 
@@ -54,6 +59,19 @@ void APP_Init(void)
 /////////////////////////////////////////////////////////////////////////////
 void APP_Background(void)
 {
+  u32 pin_changed;
+  static u32 old_pin_status;
+
+  MIOS32_IRQ_Disable(); // atomic
+  pin_changed = pin_status ^ old_pin_status; // buttons changed (up or down)
+  old_pin_status = pin_status; // save pin status for next time
+  MIOS32_IRQ_Enable();
+
+  if (pin_changed & 0x1ff) // only consider buttons 1..9
+    // We use old_pin_status here to get the status that the pin_changed vector
+    // actually refers to. Otherwise, pin_changed might have changed status
+    // between the calculation of pin_changed above and its usage here.
+    PARAM_ButtonHandle(old_pin_status & 0x1ff);
 }
 
 
@@ -72,9 +90,11 @@ void APP_Tick(void)
 
   // run P6 I/O scan
   MIOS32_BOARD_P6_ScanStart();
+  MIOS32_ENC_UpdateStates();
 
   // Process I/O changes
   MIOS32_BOARD_P6_DIN_Handler(APP_DIN_NotifyToggle);
+  MIOS32_ENC_Handler(APP_ENC_NotifyChange);
 
   // update synth
   SYNTH_Update_1mS();
@@ -123,13 +143,14 @@ void APP_SRIO_ServiceFinish(void)
 /////////////////////////////////////////////////////////////////////////////
 void APP_DIN_NotifyToggle(u32 pin, u32 pin_value)
 {
-  MIOS32_LCD_CursorSet(6, 1);
-  MIOS32_LCD_PrintFormattedString("Bit %02d:%d", pin, pin_value);
-  if (pin <= 8 && pin_value) {
-    u32 leds = MIOS32_BOARD_LED_Get();
-    MIOS32_BOARD_LED_Set(leds, 0);
-    MIOS32_BOARD_LED_Set(1 << pin, 0xffff);
-  }
+  // Don't do much here; we don't want to call parameter handler at this
+  // point as we don't want to load the interrupt we're running off of with
+  // any slow code, such as LCD writes. So just update the file global
+  // pin_status and let the background task handle the actual work.
+  if (pin_value)
+    pin_status |= 1 << pin;
+  else
+    pin_status &= ~(1 << pin);
 }
 
 
@@ -140,6 +161,7 @@ void APP_DIN_NotifyToggle(u32 pin, u32 pin_value)
 /////////////////////////////////////////////////////////////////////////////
 void APP_ENC_NotifyChange(u32 encoder, s32 incrementer)
 {
+  PARAM_EncoderChange(encoder, incrementer);
 }
 
 
