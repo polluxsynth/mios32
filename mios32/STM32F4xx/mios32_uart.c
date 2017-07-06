@@ -687,10 +687,18 @@ s32 MIOS32_UART_TxBufferPutMore_NonBlocking(u8 uart, u8 *buffer, u16 len)
     // enable Tx interrupt if buffer was empty
     if( ++tx_buffer_size[uart] == 1 ) {
       switch( uart ) {
+#if NUM_SUPPORTED_UARTS >= 1
         case 0: MIOS32_UART0->CR1 |= (1 << 7); break; // enable TXE interrupt (TXEIE=1)
+#endif
+#if NUM_SUPPORTED_UARTS >= 2
         case 1: MIOS32_UART1->CR1 |= (1 << 7); break; // enable TXE interrupt (TXEIE=1)
+#endif
+#if NUM_SUPPORTED_UARTS >= 3
         case 2: MIOS32_UART2_TX->CR1 |= (1 << 7); break; // enable TXE interrupt (TXEIE=1)
+#endif
+#if NUM_SUPPORTED_UARTS >= 4
         case 3: MIOS32_UART3->CR1 |= (1 << 7); break; // enable TXE interrupt (TXEIE=1)
+#endif
         default: MIOS32_IRQ_Enable(); return -3; // uart not supported by routine (yet)
       }
     }
