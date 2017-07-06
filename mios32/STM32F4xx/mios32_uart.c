@@ -29,6 +29,16 @@
 // Pin definitions and USART mappings
 /////////////////////////////////////////////////////////////////////////////
 
+#ifdef MIOS32_BOARD_AUDIOTHINGIES_P6
+// The P6 only has a single MIDI interface, located on PC10/11, which can
+// be used either by USART3 or USART4. We select USART3 here, as it is
+// already used in MIOS32, normally as UART1. We set it up as UART0.
+
+#undef MIOS32_UART_NUM
+#define MIOS32_UART_NUM 1
+
+#endif
+
 // how many UARTs are supported?
 #if MIOS32_UART_NUM > 3
 # define NUM_SUPPORTED_UARTS 4
@@ -36,6 +46,18 @@
 # define NUM_SUPPORTED_UARTS MIOS32_UART_NUM
 #endif
 
+#ifdef MIOS32_BOARD_AUDIOTHINGIES_P6
+
+#define MIOS32_UART0_TX_PORT     GPIOC
+#define MIOS32_UART0_TX_PIN      GPIO_Pin_10
+#define MIOS32_UART0_RX_PORT     GPIOC
+#define MIOS32_UART0_RX_PIN      GPIO_Pin_11
+#define MIOS32_UART0             USART3
+#define MIOS32_UART0_IRQ_CHANNEL USART3_IRQn
+#define MIOS32_UART0_IRQHANDLER_FUNC void USART3_IRQHandler(void)
+#define MIOS32_UART0_REMAP_FUNC  { GPIO_PinAFConfig(GPIOC, GPIO_PinSource10, GPIO_AF_USART3); GPIO_PinAFConfig(GPIOC, GPIO_PinSource11, GPIO_AF_USART3); }
+
+#else
 
 #define MIOS32_UART0_TX_PORT     GPIOA
 #define MIOS32_UART0_TX_PIN      GPIO_Pin_2
@@ -77,6 +99,7 @@
 #define MIOS32_UART3_IRQHANDLER_FUNC void UART5_IRQHandler(void)
 #define MIOS32_UART3_REMAP_FUNC  { GPIO_PinAFConfig(GPIOC, GPIO_PinSource12, GPIO_AF_UART5); GPIO_PinAFConfig(GPIOD, GPIO_PinSource2, GPIO_AF_UART5); }
 
+#endif
 
 /////////////////////////////////////////////////////////////////////////////
 // Local variables
