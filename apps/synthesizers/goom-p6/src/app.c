@@ -43,6 +43,9 @@ void APP_Init(void)
   // initialize all LEDs
   MIOS32_BOARD_LED_Init(0xffffffff);
 
+  // init EEPROM driver
+  MIOS32_IIC_BS_Init(0);
+
   // init P6 I/O scan
   MIOS32_BOARD_P6_ScanInit();
 
@@ -72,6 +75,10 @@ void APP_Background(void)
     // actually refers to. Otherwise, pin_changed might have changed status
     // between the calculation of pin_changed above and its usage here.
     PARAM_ButtonHandle(old_pin_status & 0x1ff);
+
+//  u32 timestamp = MIOS32_TIMESTAMP_Get();
+//  if ((timestamp & 0x3ff) == 0)
+//MIOS32_MIDI_SendDebugMessage("%s: SR2: %04x (%sBUSY)\n", __func__, I2C1->SR2, I2C1->SR2 & 0002 ? "" : "NOT ");
 }
 
 

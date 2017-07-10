@@ -27,6 +27,10 @@
 
 #define MIOS32_I2S_MCLK_ENABLE  1
 
+// Use MIOS32 Banksticks interface for accessing P6 on-board EEPROM
+#define MIOS32_IIC_BS_PORT 1
+#define MIOS32_IIC_BS_NUM 1 // one EEPROM available
+
 // Sample rate: use the same like in the original Goom project
 // (72 MHz / 2048)
 #define MIOS32_I2S_AUDIO_FREQ  35156
