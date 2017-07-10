@@ -63,8 +63,13 @@
 #define MIOS32_IIC1_SCL_PIN     GPIO_Pin_6
 #define MIOS32_IIC1_SCL_AF      { GPIO_PinAFConfig(GPIOB, GPIO_PinSource6, GPIO_AF_I2C1); }
 #define MIOS32_IIC1_SDA_PORT    GPIOB
+#ifdef MIOS32_BOARD_AUDIOTHINGIES_P6
+#define MIOS32_IIC1_SDA_PIN     GPIO_Pin_7
+#define MIOS32_IIC1_SDA_AF      { GPIO_PinAFConfig(GPIOB, GPIO_PinSource7, GPIO_AF_I2C1); }
+#else
 #define MIOS32_IIC1_SDA_PIN     GPIO_Pin_9
 #define MIOS32_IIC1_SDA_AF      { GPIO_PinAFConfig(GPIOB, GPIO_PinSource9, GPIO_AF_I2C1); }
+#endif
 
 /////////////////////////////////////////////////////////////////////////////
 // Duty cycle definitions
@@ -154,6 +159,8 @@ s32 MIOS32_IIC_Init(u32 mode)
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
   GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
 
+#ifndef MIOS32_BOARD_AUDIOTHINGIES_P6
+  // Fake it: just don't initialize I2C2 AF
   GPIO_InitStructure.GPIO_Pin = MIOS32_IIC0_SCL_PIN;
   GPIO_Init(MIOS32_IIC0_SCL_PORT, &GPIO_InitStructure);
   MIOS32_IIC0_SCL_AF;
@@ -161,6 +168,7 @@ s32 MIOS32_IIC_Init(u32 mode)
   GPIO_InitStructure.GPIO_Pin = MIOS32_IIC0_SDA_PIN;
   GPIO_Init(MIOS32_IIC0_SDA_PORT, &GPIO_InitStructure);
   MIOS32_IIC0_SDA_AF;
+#endif
 
 #if MIOS32_IIC_NUM >= 2
   GPIO_InitStructure.GPIO_Pin = MIOS32_IIC1_SCL_PIN;
@@ -172,7 +180,11 @@ s32 MIOS32_IIC_Init(u32 mode)
   MIOS32_IIC1_SDA_AF;
 #endif
 
+#ifdef MIOS32_BOARD_AUDIOTHINGIES_P6
+  for(i=1; i<MIOS32_IIC_NUM; ++i) {
+#else
   for(i=0; i<MIOS32_IIC_NUM; ++i) {
+#endif
     // configure I2C peripheral
     MIOS32_IIC_InitPeripheral(i);
 
@@ -182,12 +194,16 @@ s32 MIOS32_IIC_Init(u32 mode)
   }
 
   // configure and enable I2C2 interrupts
+#ifndef MIOS32_BOARD_AUDIOTHINGIES_P6
   MIOS32_IRQ_Install(I2C2_EV_IRQn, MIOS32_IRQ_IIC_EV_PRIORITY);  
+#endif
 #if MIOS32_IIC_NUM >= 2
   MIOS32_IRQ_Install(I2C1_EV_IRQn, MIOS32_IRQ_IIC_EV_PRIORITY);
 #endif
 
+#ifndef MIOS32_BOARD_AUDIOTHINGIES_P6
   MIOS32_IRQ_Install(I2C2_ER_IRQn, MIOS32_IRQ_IIC_ER_PRIORITY);
+#endif
 #if MIOS32_IIC_NUM >= 2
   MIOS32_IRQ_Install(I2C1_ER_IRQn, MIOS32_IRQ_IIC_ER_PRIORITY);
 #endif
