@@ -46,6 +46,10 @@ s32 SYNTH_Init(u32 mode);
 
 s32 SYNTH_MIDI_NotifyPackage(mios32_midi_port_t port, mios32_midi_package_t midi_package);
 s32 SYNTH_Update_1mS(void);
+
+u8 *SYNTH_GetParamsAddress(u8 chan);
+s32 SYNTH_ParamUpdate(u8 chan);
+
 u8 SYNTH_FetchParamValue(u8 chan, u8 param_id);
 s32 SYNTH_StoreParamValue(u8 chan, u8 param_id, u8 value);
 
