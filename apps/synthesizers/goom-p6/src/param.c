@@ -20,6 +20,8 @@
 
 #define NPAGES 7
 
+#define EEPROM_BLOCKSIZE 64 // size of each patch in EEPROM
+
 /////////////////////////////////////////////////////////////////////////////
 // Type and variable definitions
 /////////////////////////////////////////////////////////////////////////////
@@ -56,7 +58,7 @@ static const display_set_t const *display_sets[] =
 // Parameter domains: who is the parameter for ?
 //
 
-enum param_domain { D_NONE, SYNTH, CHAN };
+enum param_domain { D_NONE, SYNTH, CHAN, PGM };
 
 // Central structure: definition of parameter
 
@@ -90,12 +92,16 @@ static s32 PARAM_StoreSynthParamValue(const pd_t *param, u8 value);
 static int PARAM_FetchChanNum(const pd_t *param);
 static s32 PARAM_StoreChanNum(const pd_t *param, u8 value);
 
+static int PARAM_FetchPgmNum(const pd_t *param);
+static s32 PARAM_StorePgmNum(const pd_t *param, u8 value);
+
 // Order is same as enum param_domain
 static const struct param_manager managers[] =
 {
   { NULL, NULL },
   { PARAM_FetchSynthParamValue, PARAM_StoreSynthParamValue },
   { PARAM_FetchChanNum, PARAM_StoreChanNum },
+  { PARAM_FetchPgmNum, PARAM_StorePgmNum },
 };
 
 // Synth parameter id's (move to synth.h ?)
@@ -148,6 +154,11 @@ static const pd_t pan = { PAN, SYNTH, BIPOL, 0, 127, "pan" };
 // Channel we are editing
 static const pd_t chan = { 0, CHAN, UNIPOL, 1, 16, "Channel" };
 
+// Patch management
+static const pd_t load_pgm = { 0, PGM, UNIPOL, 0, 127, "Program" };
+static const pd_t store_pgm = { 0, PGM, UNIPOL, 0, 127, "Store program" };
+static const pd_t pgm_stored = { 0, D_NONE, 0, 0, 0, "Program stored!" };
+
 // Page definitions
 //
 
@@ -165,30 +176,80 @@ static const struct page aeg_p =
   { L_ENV, { &aeg_dummy, &a_atk, &a_dec, &a_sus, &a_rel, NULL } };
 static const struct page chan_p =
   { L_HOME, { &chan, NULL, NULL, NULL, NULL, NULL } };
+static const struct page load_p =
+  { L_LOAD, { &load_pgm, NULL, NULL, NULL, NULL, NULL } };
+static const struct page store_p =
+  { L_HOME | L_LOAD, { &store_pgm, NULL, NULL, NULL, NULL, NULL } };
+static const struct page stored_p =
+  { L_HOME | L_LOAD, { &pgm_stored, NULL, NULL, NULL, NULL, NULL } };
 
 struct transition {
   const struct page *page;      // If we're on this page...
   enum p6_buttons newbuttons;   // And this button gets pressed...
   enum p6_buttons downbuttons;  // While these buttons are held...
   const struct page *newpage;   // Then go to this page
+  s32 (*action)(const struct page *page); // Call when page reached
 };
 
+static s32 do_store_pgm(const struct page *page);
+
 static const struct transition transitions[] = {
-  { NULL, B_HOME, B_NONE, &chan_p },
-  { &osc0_p, B_OSC, B_NONE, &osc1_p1 },
-  { &osc1_p1, B_OSC, B_NONE, &osc1_p2 },
-  { NULL, B_OSC, B_NONE, &osc0_p },
-  { NULL, B_FILT, B_NONE, &filt_p },
-  { &aeg_p, B_ENV, B_NONE, &feg_p },
-  { NULL, B_ENV, B_NONE, &aeg_p },
+  { &store_p, B_LOAD, B_NONE, &stored_p, &do_store_pgm },
+  { NULL, B_LOAD, B_HOME, &store_p, NULL },
+  { NULL, B_LOAD, B_NONE, &load_p, NULL },
+  { NULL, B_HOME, B_NONE, &chan_p, NULL },
+  { &osc0_p, B_OSC, B_NONE, &osc1_p1, NULL },
+  { &osc1_p1, B_OSC, B_NONE, &osc1_p2, NULL },
+  { NULL, B_OSC, B_NONE, &osc0_p, NULL },
+  { NULL, B_FILT, B_NONE, &filt_p, NULL },
+  { &aeg_p, B_ENV, B_NONE, &feg_p, NULL },
+  { NULL, B_ENV, B_NONE, &aeg_p, NULL },
 };
 
 // File global variables
 
 static int current_chan;
+static int current_pgm;
 
 static u32 current_button_mask; // which buttons are pressed?
 static const struct page *current_page; // of menu handler
+
+/////////////////////////////////////////////////////////////////////////////
+// Actually store program
+/////////////////////////////////////////////////////////////////////////////
+static s32 do_store_pgm(const struct page *page)
+{
+  s32 res;
+
+  res = MIOS32_IIC_BS_Write(0, current_pgm * EEPROM_BLOCKSIZE, SYNTH_GetParamsAddress(current_chan), NPARAM);
+
+#if 0 // debugging
+  static u8 buf[EEPROM_BLOCKSIZE];
+
+  MIOS32_MIDI_SendDebugMessage("EEPROM Write: status %d\n", res);
+
+  // Wait 5ms (max write time) before attempting to read back
+
+  MIOS32_DELAY_Wait_uS(5000);
+  
+  // Verify by reading
+
+  res = MIOS32_IIC_BS_Read(0, current_pgm * EEPROM_BLOCKSIZE, buf, EEPROM_BLOCKSIZE);
+
+  MIOS32_MIDI_SendDebugMessage("EEPROM Read verify: status %d\n", res);
+  
+  MIOS32_MIDI_SendDebugMessage("Read verify: Data:\n");
+  int i;
+  for (i = 0; i < EEPROM_BLOCKSIZE; i += 16)
+    MIOS32_MIDI_SendDebugMessage("%02x %02x %02x %02x  %02x %02x %02x %02x  %02x %02x %02x  %02x %02x %02x %02x\n",
+                                 buf[i+0], buf[i+1], buf[i+2], buf[i+3],
+                                 buf[i+4], buf[i+5], buf[i+6], buf[i+7],
+                                 buf[i+8], buf[i+9], buf[i+10], buf[i+11],
+                                 buf[i+12], buf[i+13], buf[i+14], buf[i+15]);
+#endif
+
+  return res;
+}
 
 /////////////////////////////////////////////////////////////////////////////
 // fetch synth parameter value
@@ -209,7 +270,48 @@ static s32 PARAM_StoreSynthParamValue(const pd_t *param, u8 value)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-// fetch channel number
+// fetch current program number
+/////////////////////////////////////////////////////////////////////////////
+static int PARAM_FetchPgmNum(const pd_t *param)
+{
+  return current_pgm;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+// store program number
+/////////////////////////////////////////////////////////////////////////////
+static s32 PARAM_StorePgmNum(const pd_t *param, u8 value)
+{
+  current_pgm = value;
+  s32 res = 0;
+  
+  if (param == &load_pgm) {
+MIOS32_MIDI_SendDebugMessage("Loading program %d\n", value);
+    res = MIOS32_IIC_BS_Read(0, value * EEPROM_BLOCKSIZE, SYNTH_GetParamsAddress(current_chan), NPARAM);
+    if (res == 0) SYNTH_ParamUpdate(current_chan);
+  } 
+
+#if 0
+  static u8 buf[EEPROM_BLOCKSIZE];
+  res = MIOS32_IIC_BS_Read(0, value * EEPROM_BLOCKSIZE, buf, EEPROM_BLOCKSIZE);
+
+  MIOS32_MIDI_SendDebugMessage("EEPROM Read: status %d\n", res);
+  
+  MIOS32_MIDI_SendDebugMessage("Data:\n");
+  int i;
+  for (i = 0; i < EEPROM_BLOCKSIZE; i += 16)
+    MIOS32_MIDI_SendDebugMessage("%02x %02x %02x %02x  %02x %02x %02x %02x  %02x %02x %02x  %02x %02x %02x %02x\n",
+                                 buf[i+0], buf[i+1], buf[i+2], buf[i+3],
+                                 buf[i+4], buf[i+5], buf[i+6], buf[i+7],
+                                 buf[i+8], buf[i+9], buf[i+10], buf[i+11],
+                                 buf[i+12], buf[i+13], buf[i+14], buf[i+15]);
+#endif
+
+  return res;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+// fetch program number
 /////////////////////////////////////////////////////////////////////////////
 static int PARAM_FetchChanNum(const pd_t *param)
 {
@@ -305,6 +407,8 @@ s32 PARAM_ButtonHandle(u32 button_mask)
         // We've found a new page. Transition to it.
         current_page = transition->newpage;
         MIOS32_MIDI_SendDebugMessage("New state 0x%x at line #%d", current_page, t);
+        if (transition->action)
+          transition->action(current_page);
 
         PARAM_DisplayPage(current_page);
 
