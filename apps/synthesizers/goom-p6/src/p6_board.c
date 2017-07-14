@@ -23,12 +23,21 @@
 /////////////////////////////////////////////////////////////////////////////
 // Global variables
 /////////////////////////////////////////////////////////////////////////////
+
+#define DEBOUNCE_PERIOD 50 // ms
+
+#define BUTTONS_MASK 0x7fff // bits representing buttons (incl. encoder pushes)
+
 // Emulate SRIO
 // Don't really have to be volatile, but SRIO uses DMA so let's play along
 u32 mios32_p6_inbits;
 u32 mios32_p6_inbits_prev;
 u32 mios32_p6_inbits_changed;
+u32 mios32_p6_inbits_debounced;
+
 u32 mios32_p6_outbits;
+
+int debounce_counter;
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -215,18 +224,28 @@ s32 MIOS32_BOARD_P6_ScanStart(void)
   mios32_p6_inbits |= MIOS32_BOARD_PinGet(S4_PIN) << S4_PINSHIFT;
   mios32_p6_inbits |= MIOS32_BOARD_PinGet(S7_PIN) << S7_PINSHIFT;
 
-  // Detect changes
-  u32 changed = mios32_p6_inbits_prev ^ mios32_p6_inbits;
-  mios32_p6_inbits_changed |= changed;
-  mios32_p6_inbits_prev = mios32_p6_inbits;
+  // Detect changes for buttons (encoders are handled below), including
+  // encoder push buttons
 
-  // update encoder states
+  if (debounce_counter == 0) {
+    u32 changed = mios32_p6_inbits_prev ^ mios32_p6_inbits;
+    changed &= BUTTONS_MASK; // only handle buttons here
+    if (changed) {
+      mios32_p6_inbits_changed |= changed;
+      mios32_p6_inbits_prev = mios32_p6_inbits;
+      mios32_p6_inbits_debounced = mios32_p6_inbits;
+      debounce_counter = DEBOUNCE_PERIOD;
+    }
+  } else debounce_counter--;
+
+  // update encoder states - use undebounced bit vector in order to capture
+  // high encoder rates
   int enc;
   for (enc = 0; enc < NUM_ENCODERS; ++enc)
     MIOS32_ENC_StateSet(enc, (mios32_p6_inbits >> (16 + 2 * enc)) & 3);
 
   // '595 Output chain
-  // We only have one '595, so we ouptut output 8 bits for LED2..9
+  // We only have one '595, so we output 8 bits for LED2..9 .
   // Happily, the bits are in order, starting with bit 1 = LED2, etc
   // We don't use bit 0 at all, setting the corresponding LED1 is done
   // by directly controlling the I/O port, so that even if interrupts
@@ -262,7 +281,7 @@ s32 MIOS32_BOARD_P6_DIN_Handler(void *_callback)
   for(bit = 0; bit < NUM_INBITS; ++bit)
     if (changed & (1 << bit)) {
       // call the notification function
-      callback(bit, (mios32_p6_inbits & (1 << bit)) ? 1 : 0);
+      callback(bit, (mios32_p6_inbits_debounced & (1 << bit)) ? 1 : 0);
   }
 
   return 0;
