@@ -52,42 +52,48 @@
 /////////////////////////////////////////////////////////////////////////////
 s32 PROC_Init(u32 mode)
 {
+  return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 // Handle incoming MIDI data
 /////////////////////////////////////////////////////////////////////////////
-s32 PROC_MIDI_NotifyPackage(mios32_midi_port_t port, mios32_midi_package_t midi_package)
+s32 PROC_MIDI_NotifyPackage(mios32_midi_port_t port, mios32_midi_package_t midi)
 {
-  switch (midi_package.type) {
-  case NoteOff:
-    midi_package.velocity = 0; // set velocity to 0 and fall through
-  case NoteOn:
-    // blabla midi_package.note
-    if (midi_package.velocity == 0) { // note off
-    } else {
-    }
+  uint bend_val;
 
-#if 0
-    MIOS32_IRQ_Disable();
-    MIOS32_IRQ_Enable();
-#endif
+MIOS32_MIDI_SendDebugMessage("Received midi from port %d\n", port);
+
+  switch (midi.type) {
+  case NoteOff:
+    MIOS32_MIDI_SendNoteOn(port, midi.chn, midi.note, midi.velocity);
+    break;
+
+  case NoteOn:
+    MIOS32_MIDI_SendDebugMessage("Note on: port %d, chan %d, note %d, vel %d\n",
+                                 port, midi.chn, midi.note, midi.velocity);
+    MIOS32_MIDI_SendNoteOn(port, midi.chn, midi.note, midi.velocity);
     break;
 
   case CC:
-    if (midi_package.cc_number == 120 || midi_package.cc_number >= 123) {
+    MIOS32_MIDI_SendCC(port, midi.chn, midi.cc_number, midi.value);
+#if 0
+    if (midi.cc_number == 120 || midi.cc_number >= 123) {
       // all notes off
       break;
     }
-    if (midi_package.cc_number == 64) {
+    if (midi.cc_number == 64) {
       // sustain pedal
       break;
     }
-    // blabla midi_package.cc_number and midi_package.value
+#endif
     break;
+
   case PitchBend:
-    // blabla (midi_package.evnt2 << 7) + midi_package.evnt1 - 0x2000;
+    bend_val = (midi.evnt2 << 7) + midi.evnt1; //  - 0x2000;
+    MIOS32_MIDI_SendPitchBend(port, midi.chn, bend_val);
     break;
+
   default:
     break;
   }
