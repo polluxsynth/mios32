@@ -51,6 +51,7 @@ struct keyinfo {
 /////////////////////////////////////////////////////////////////////////////
 
 enum proc_sm State;
+int Trans_left = 0, Trans_right = 0;
 int Splitpoint = SPLIT_MAX;
 struct keyinfo keystatus[128]; // TODO: This should really be per port
 
@@ -84,9 +85,17 @@ s32 PROC_sm(u8 program_change)
   if (number == 0) {
     State = ARMED;
     MIOS32_MIDI_SendDebugMessage("SM ARMED\n");
-  } else if (State == ARMED && number == 1) {
-    State = SPLIT_SET;
-    MIOS32_MIDI_SendDebugMessage("SM SPLIT_SET\n");
+  } else if (State == ARMED) {
+    if (number == 1) {
+      State = SPLIT_SET;
+      MIOS32_MIDI_SendDebugMessage("SM SPLIT_SET\n");
+    } else if (number >= 2 && number <= 4) {
+      Trans_left = (number - 3) * 12;
+      State = IDLE;
+    } else if (number >= 5 && number <= 7) {
+      Trans_right = (number - 6) * 12;
+      State = IDLE;
+    }
   } else {
     MIOS32_MIDI_SendDebugMessage("Unkown combo: ->SM IDLE\n");
     State = IDLE;
@@ -129,19 +138,33 @@ MIOS32_MIDI_SendDebugMessage("Received midi from port %d\n", port);
     }
 
     if (midi.velocity) { // true note on
+      int *transp;
+
       // Do the split
-      if (midi.note > Splitpoint) midi.chn++;
+      if (midi.note > Splitpoint) {
+        midi.chn++;
+        transp = &Trans_right;
+      } else {
+        transp = &Trans_left;
+      }
+
+      // Do transpose
+      u8 orig_note = midi.note; // save it
+      int new_note = (int) midi.note + *transp; // try it
+
+      if (new_note <= 127 && new_note >= 0)
+        midi.note += *transp;;
 
       // Save status for subsequnt note off
-      keystatus[midi.note].note = midi.note;
-      keystatus[midi.note].chn = midi.chn;
-      keystatus[midi.note].valid = 1;
+      keystatus[orig_note].note = midi.note;
+      keystatus[orig_note].chn = midi.chn;
+      keystatus[orig_note].valid = 1;
     } else if (keystatus[midi.note].valid) {
       // It's really a note off so treat it that way.
       // Grab original note and channel number from note on time
-      midi.note = keystatus[midi.note].note;
-      midi.chn = keystatus[midi.note].chn;
       // keystatus[midi.note].valid = 0 // TODO: ?needed
+      midi.chn = keystatus[midi.note].chn;
+      midi.note = keystatus[midi.note].note; // Needs to be last
     }
     // Else we don't have a mapping and just echo it through.
 
