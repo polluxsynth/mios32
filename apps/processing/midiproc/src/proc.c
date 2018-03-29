@@ -79,28 +79,28 @@ s32 PROC_Init(u32 mode)
 s32 PROC_sm(u8 program_change)
 {
   u8 number = program_change & 7;
-//  u8 bank = (program_change >> 3) & 7;
-//  u8 group = program_change >> 6;
+  u8 bank = (program_change >> 3) & 7;
+  u8 group = program_change >> 6;
 
-  if (number == 0) {
+  if (group == 1) {
     State = ARMED;
     MIOS32_MIDI_SendDebugMessage("SM ARMED\n");
-  } else if (number >= 2 && number <= 4) {
-    Trans_left = (number - 3) * 12;
-    MIOS32_MIDI_SendDebugMessage("SM LEFT_XPOSE %d\n", Trans_left);
-    State = IDLE;
-  } else if (number >= 5 && number <= 7) {
-    Trans_right = (number - 6) * 12;
-    MIOS32_MIDI_SendDebugMessage("SM RIGHT_XPOSE %d\n", Trans_right);
-    State = IDLE;
   } else if (State == ARMED) {
-    if (number == 1) {
+    if (group == 0) {
       State = SPLIT_SET;
       MIOS32_MIDI_SendDebugMessage("SM SPLIT_SET\n");
     } else {
       MIOS32_MIDI_SendDebugMessage("Unkown combo: ->SM IDLE\n");
       State = IDLE;
     }
+  }
+  if (number >= 0 && number <= 4) {
+    Trans_left = (number - 2) * 12;
+    MIOS32_MIDI_SendDebugMessage("SM LEFT_XPOSE %d\n", Trans_left);
+  }
+  if (bank >= 0 && bank <= 4) {
+    Trans_right = (bank - 2) * 12;
+    MIOS32_MIDI_SendDebugMessage("SM RIGHT_XPOSE %d\n", Trans_right);
   }
 
   return State;
