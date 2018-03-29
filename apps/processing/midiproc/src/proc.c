@@ -85,20 +85,22 @@ s32 PROC_sm(u8 program_change)
   if (number == 0) {
     State = ARMED;
     MIOS32_MIDI_SendDebugMessage("SM ARMED\n");
+  } else if (number >= 2 && number <= 4) {
+    Trans_left = (number - 3) * 12;
+    MIOS32_MIDI_SendDebugMessage("SM LEFT_XPOSE %d\n", Trans_left);
+    State = IDLE;
+  } else if (number >= 5 && number <= 7) {
+    Trans_right = (number - 6) * 12;
+    MIOS32_MIDI_SendDebugMessage("SM RIGHT_XPOSE %d\n", Trans_right);
+    State = IDLE;
   } else if (State == ARMED) {
     if (number == 1) {
       State = SPLIT_SET;
       MIOS32_MIDI_SendDebugMessage("SM SPLIT_SET\n");
-    } else if (number >= 2 && number <= 4) {
-      Trans_left = (number - 3) * 12;
-      State = IDLE;
-    } else if (number >= 5 && number <= 7) {
-      Trans_right = (number - 6) * 12;
+    } else {
+      MIOS32_MIDI_SendDebugMessage("Unkown combo: ->SM IDLE\n");
       State = IDLE;
     }
-  } else {
-    MIOS32_MIDI_SendDebugMessage("Unkown combo: ->SM IDLE\n");
-    State = IDLE;
   }
 
   return State;
