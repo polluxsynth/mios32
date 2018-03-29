@@ -38,6 +38,12 @@
 
 enum proc_sm { IDLE, ARMED, SPLIT_SET };
 
+struct keyinfo {
+  unsigned int note:7; // original note number
+  unsigned int chn:4; // original channel number
+  unsigned int valid:1;
+};
+
 #define SPLIT_MAX 127
 
 /////////////////////////////////////////////////////////////////////////////
@@ -46,6 +52,7 @@ enum proc_sm { IDLE, ARMED, SPLIT_SET };
 
 enum proc_sm State;
 int Splitpoint = SPLIT_MAX;
+struct keyinfo keystatus[128]; // TODO: This should really be per port
 
 /////////////////////////////////////////////////////////////////////////////
 // Local Prototypes
@@ -57,6 +64,11 @@ int Splitpoint = SPLIT_MAX;
 /////////////////////////////////////////////////////////////////////////////
 s32 PROC_Init(u32 mode)
 {
+  int i;
+
+  for (i = 0; i < 128; i++) {
+    keystatus[i].valid = 0;
+  }
   return 0;
 }
 
@@ -94,8 +106,18 @@ MIOS32_MIDI_SendDebugMessage("Received midi from port %d\n", port);
 
   switch (midi.type) {
   case NoteOff:
+#if 0 // original split algo
     if (midi.note > Splitpoint) midi.chn++;
-    MIOS32_MIDI_SendNoteOn(port, midi.chn, midi.note, midi.velocity);
+#endif
+    if (keystatus[midi.note].valid) {
+      // Grab original note and channel number from note on time
+      midi.note = keystatus[midi.note].note;
+      midi.chn = keystatus[midi.chn].chn;
+      // keystatus[midi.note].valid = 0 // TODO: ?needed
+    }
+    // Else we don't have a mapping and just echo it through.
+
+    MIOS32_MIDI_SendNoteOff(port, midi.chn, midi.note, midi.velocity);
     break;
 
   case NoteOn:
@@ -106,7 +128,23 @@ MIOS32_MIDI_SendDebugMessage("Received midi from port %d\n", port);
       break; // Don't echo note
     }
 
-    if (midi.note > Splitpoint) midi.chn++;
+    if (midi.velocity) { // true note on
+      // Do the split
+      if (midi.note > Splitpoint) midi.chn++;
+
+      // Save status for subsequnt note off
+      keystatus[midi.note].note = midi.note;
+      keystatus[midi.note].chn = midi.chn;
+      keystatus[midi.note].valid = 1;
+    } else if (keystatus[midi.note].valid) {
+      // It's really a note off so treat it that way.
+      // Grab original note and channel number from note on time
+      midi.note = keystatus[midi.note].note;
+      midi.chn = keystatus[midi.note].chn;
+      // keystatus[midi.note].valid = 0 // TODO: ?needed
+    }
+    // Else we don't have a mapping and just echo it through.
+
     MIOS32_MIDI_SendDebugMessage("Note on: port %d, chan %d, note %d, vel %d\n",
                                  port, midi.chn, midi.note, midi.velocity);
     MIOS32_MIDI_SendNoteOn(port, midi.chn, midi.note, midi.velocity);
